@@ -8,18 +8,21 @@ app.use(bodyParser.json());
 app.use(express.static(__dirname));
 
 // SQL Server Config
-const dbConfig = {
-    user: 'reliance', 
-    password: 'relsoft', // <-- sir, මෙතනට ඔයාගේ SQL sa password එක අනිවාර්යයෙන්ම දෙන්න!
-    server: '127.0.0.1',           
-    port: 1433,                    
-    database: 'UnBikeMart',
-    options: {
-        encrypt: false,
-        trustServerCertificate: true,
-        enableArithAbort: true
-    }
-};
+const express = require('express');
+const sql = require('mssql');
+const app = express();
+
+// වැදගත්ම වෙනස: මෙතැනදී process.env.DATABASE_URL භාවිතා කරයි
+const dbConfig = process.env.DATABASE_URL;
+
+sql.connect(dbConfig).then(() => {
+    console.log("Connected to Railway Database successfully!");
+}).catch(err => {
+    console.error("Database connection failed: ", err);
+});
+
+// ඉතිරි කෝඩ් කොටස් මෙතැනට අදාළව තබා ගන්න
+app.listen(process.env.PORT || 3000, () => console.log("Server Running..."));
 
 // Global Connection Pool එකක් සාදා ගැනීම (මේකෙන් තමයි Connection හිරවෙන ප්‍රශ්නය විසඳෙන්නේ)
 let pool;
