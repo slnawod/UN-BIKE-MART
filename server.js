@@ -1,33 +1,52 @@
 const express = require('express');
-const { Pool } = require('pg'); 
+const mssql = require('mssql');
+const bodyParser = require('body-parser');
+const path = require('path');
+
 const app = express();
+app.use(bodyParser.json());
+app.use(express.static(__dirname));
 
-// Railway database connection eka
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
-});
+// ක්ලවුඩ් සර්වර් එකේදී DATABASE_URL භාවිතා කරන්න. නැත්නම් දේශීයව භාවිතා කරන්න.
+const dbConfig = process.env.DATABASE_URL || {
+    user: 'reliance', 
+    password: 'relsoft', 
+    server: '127.0.0.1',           
+    port: 1433,                    
+    database: 'UnBikeMart',
+    options: {
+        encrypt: false,
+        trustServerCertificate: true,
+        enableArithAbort: true
+    }
+};
 
-app.use(express.json());
-app.use(express.static('public'));
+let pool;
 
-// Database connection eka hariyatama wada karanawada kiyala check karanna
-pool.connect()
-    .then(() => console.log("Connected to Railway PostgreSQL!"))
-    .catch(err => console.error("Database connection error:", err));
-
-// Login eka
-app.post('/api/login', async (req, res) => {
-    const { username, password } = req.body;
+async function connectDatabase() {
     try {
-        const result = await pool.query('SELECT * FROM Users WHERE username = $1 AND password = $2', [username, password]);
-        if (result.rows.length > 0) {
-            res.send({ success: true });
-        } else {
-            res.status(401).send({ success: false });
-        }
-    } catch (err) { res.status(500).send(err.message); }
+        // DATABASE_URL ලබා දෙන්නේ නම් එය භාවිතා කරන්න, නැත්නම් dbConfig වස්තුව භාවිතා කරන්න
+        pool = await mssql.connect(process.env.DATABASE_URL || dbConfig);
+        console.log('============= DATABASE CONNECTED SUCCESSFULLY =============');
+    } catch (err) {
+        console.error('DATABASE CONNECTION FAILED: ', err.message);
+    }
+}
+
+connectDatabase();
+
+// --- API ROUTES (පෙර පරිදිම තබා ගන්න) ---
+// (උදාහරණයක් ලෙස Vehicles API)
+app.get('/api/vehicles', async (req, res) => {
+    try {
+        let result = await pool.request().query("SELECT * FROM Vehicles");
+        res.json(result.recordset);
+    } catch (err) { 
+        console.error("Fetch Vehicles Error: ", err.message);
+        res.status(500).send(err.message); 
+    }
 });
 
+// Port එක සඳහා process.env.PORT භාවිතා කරන්න
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server Running on port ${PORT}`));
+app.listen(PORT, () => console.log(`UN BIKE MART Server running on port ${PORT}`));
